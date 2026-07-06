@@ -98,23 +98,20 @@ exports.cancelBooking = async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id);
         if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+        // Admin can cancel anyone's booking, user can only cancel their own
         if (booking.userId.toString() !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized' });
         }
         if (booking.status === 'cancelled') return res.status(400).json({ message: 'Already cancelled' });
 
         const wasConfirmed = booking.status === 'confirmed';
-
         booking.status = 'cancelled';
         await booking.save();
 
-        // Only restore the seat if it was actually confirmed and deducted
+        // Restore seat only if booking was confirmed
         if (wasConfirmed) {
-            const event = await Event.findById(booking.eventId);
-            if (event) {
-                event.availableSeats += 1;
-                await event.save();
-            }
+            await Event.findByIdAndUpdate(booking.eventId, { $inc: { availableSeats: 1 } });
         }
 
         res.json({ message: 'Booking cancelled successfully' });

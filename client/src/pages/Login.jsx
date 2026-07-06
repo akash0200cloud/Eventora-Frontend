@@ -30,9 +30,9 @@ const Login = () => {
         } catch (err) {
             if (err.needsVerification) {
                 setShowOTP(true);
-                setError('Account not verified. A new OTP has been sent to your email.');
+                setError('Account not verified. OTP sent — check server terminal.');
             } else {
-                setError(err.message || err);
+                setError(err.message || 'Something went wrong. Is the server running?');
             }
         } finally {
             setLoading(false);

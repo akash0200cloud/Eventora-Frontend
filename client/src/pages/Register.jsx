@@ -22,13 +22,12 @@ const Register = () => {
             if (!showOTP) {
                 await register(name, email, password);
                 setShowOTP(true);
-                setError('');
             } else {
                 await verifyOTP(email, otp);
                 navigate('/dashboard');
             }
         } catch (err) {
-            setError(err);
+            setError(err.message || 'Something went wrong');
         } finally {
             setLoading(false);
         }
@@ -48,39 +47,21 @@ const Register = () => {
                     <>
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-                            <input
-                                type="text"
-                                required
-                                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-700 transition shadow-sm"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                            />
+                            <input type="text" required className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-700 transition shadow-sm" value={name} onChange={(e) => setName(e.target.value)} />
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                            <input
-                                type="email"
-                                required
-                                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-700 transition shadow-sm"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
+                            <input type="email" required className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-700 transition shadow-sm" value={email} onChange={(e) => setEmail(e.target.value)} />
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-                            <input
-                                type="password"
-                                required
-                                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-700 transition shadow-sm"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
+                            <input type="password" required className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-700 transition shadow-sm" value={password} onChange={(e) => setPassword(e.target.value)} />
                         </div>
                     </>
                 ) : (
                     <div>
                         <p className="text-sm text-green-700 bg-green-50 p-3 mb-4 rounded border border-green-200">
-                            An OTP has been sent to your email. Please verify your account.
+                            OTP sent! Check your server terminal for the code (DEV MODE).
                         </p>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Verification Code (OTP)</label>
                         <input
@@ -94,12 +75,7 @@ const Register = () => {
                         />
                     </div>
                 )}
-
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-black focus:ring-4 focus:ring-gray-200 transition shadow-md mt-4"
-                >
+                <button type="submit" disabled={loading} className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-black focus:ring-4 focus:ring-gray-200 transition shadow-md mt-4">
                     {loading ? 'Processing...' : (showOTP ? 'Verify & Complete' : 'Sign Up')}
                 </button>
             </form>
