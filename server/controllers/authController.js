@@ -10,6 +10,20 @@ const generateToken = (id, role) => {
     return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
+const createAndSendOTP = async (email) => {
+    const otp = generateOTP();
+    await OTP.findOneAndDelete({ email, action: 'account_verification' });
+    await OTP.create({ email, otp, action: 'account_verification' });
+
+    try {
+        await sendOTPEmail(email, otp, 'account_verification');
+    } catch (emailErr) {
+        console.error('Email send error:', emailErr.message);
+    }
+
+    return otp;
+};
+
 exports.register = async (req, res) => {
     try {
         const { name, email, password } = req.body;
@@ -28,15 +42,7 @@ exports.register = async (req, res) => {
             isVerified: false
         });
 
-        const otp = generateOTP();
-        await OTP.findOneAndDelete({ email, action: 'account_verification' });
-        await OTP.create({ email, otp, action: 'account_verification' });
-        
-        try {
-            await sendOTPEmail(email, otp, 'account_verification');
-        } catch (emailErr) {
-            console.error('Email send error:', emailErr.message);
-        }
+        await createAndSendOTP(email);
 
         res.status(201).json({ message: 'OTP sent to email. Please verify.', email: user.email });
     } catch (error) {
@@ -58,14 +64,7 @@ exports.login = async (req, res) => {
 
         // Admin bypasses OTP verification
         if (!user.isVerified && user.role !== 'admin') {
-            const otp = generateOTP();
-            await OTP.findOneAndDelete({ email: user.email, action: 'account_verification' });
-            await OTP.create({ email: user.email, otp, action: 'account_verification' });
-            try {
-                await sendOTPEmail(user.email, otp, 'account_verification');
-            } catch (emailErr) {
-                console.error('Email send error:', emailErr.message);
-            }
+            await createAndSendOTP(user.email);
             return res.status(403).json({
                 message: 'Account not verified. OTP sent to email.',
                 needsVerification: true,
@@ -105,6 +104,21 @@ exports.verifyOTP = async (req, res) => {
             role: user.role,
             token: generateToken(user.id, user.role)
         });
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
+
+exports.resendOTP = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email is required' });
+
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        await createAndSendOTP(email);
+        res.json({ message: 'OTP resent successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
