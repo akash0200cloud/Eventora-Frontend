@@ -15,7 +15,7 @@ exports.sendBookingOTP = async (req, res) => {
         const otp = generateOTP();
         await OTP.findOneAndDelete({ email: req.user.email, action: 'event_booking' });
         await OTP.create({ email: req.user.email, otp, action: 'event_booking' });
-        await sendOTPEmail(req.user.email, otp, 'event_booking');
+        sendOTPEmail(req.user.email, otp, 'event_booking').catch(err => console.error('Email error:', err.message));
         res.json({ message: 'OTP sent successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error sending OTP', error: error.message });
@@ -85,7 +85,7 @@ exports.confirmBooking = async (req, res) => {
             event.availableSeats -= seatsNeeded;
             await event.save();
 
-            await sendBookingEmail(booking.userId.email, booking.userId.name, booking.eventId.title, booking.amount, booking.paymentStatus, paymentDetails);
+            sendBookingEmail(booking.userId.email, booking.userId.name, booking.eventId.title, booking.amount, booking.paymentStatus, paymentDetails).catch(err => console.error('Email error:', err.message));
             return res.json({ message: 'Booking confirmed successfully', booking: { ...booking.toObject(), paymentDetails } });
         }
 
@@ -94,7 +94,7 @@ exports.confirmBooking = async (req, res) => {
         booking.txnId = '';
         await booking.save();
 
-        await sendPaymentInstructionsEmail(booking.userId.email, booking.userId.name, booking.eventId.title, booking.amount, paymentDetails);
+        sendPaymentInstructionsEmail(booking.userId.email, booking.userId.name, booking.eventId.title, booking.amount, paymentDetails).catch(err => console.error('Email error:', err.message));
 
         res.json({ message: 'Payment instructions sent to the user', booking: { ...booking.toObject(), paymentDetails } });
     } catch (error) {
@@ -128,7 +128,7 @@ exports.sendPaymentOTP = async (req, res) => {
         const otp = generateOTP();
         await OTP.findOneAndDelete({ email: req.user.email, action: 'payment_confirm' });
         await OTP.create({ email: req.user.email, otp, action: 'payment_confirm' });
-        await sendOTPEmail(req.user.email, otp, 'payment_confirm');
+        sendOTPEmail(req.user.email, otp, 'payment_confirm').catch(err => console.error('Email error:', err.message));
         res.json({ message: 'OTP sent to your email' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error: error.message });
@@ -172,7 +172,7 @@ exports.payBooking = async (req, res) => {
         const paymentDetails = getPaymentDetails();
         const user = await User.findById(booking.userId);
         if (user) {
-            await sendBookingEmail(user.email, user.name, (await Event.findById(booking.eventId))?.title || 'Event', booking.amount, 'paid', paymentDetails);
+            sendBookingEmail(user.email, user.name, (await Event.findById(booking.eventId))?.title || 'Event', booking.amount, 'paid', paymentDetails).catch(err => console.error('Email error:', err.message));
         }
 
         res.json({ message: 'Payment confirmed successfully', booking });
