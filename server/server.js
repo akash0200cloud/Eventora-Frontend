@@ -40,4 +40,13 @@ mongoose.connect(process.env.MONGO_URI)
     .catch(err => console.error('❌ MongoDB Error:', err.message));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}`);
+    if (process.env.RENDER_EXTERNAL_URL) {
+        setInterval(() => {
+            fetch(`${process.env.RENDER_EXTERNAL_URL}/api/health`)
+                .then(() => console.log('🏓 Keep-alive ping sent'))
+                .catch(() => {});
+        }, 14 * 60 * 1000);
+    }
+});
