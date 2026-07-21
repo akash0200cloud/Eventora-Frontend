@@ -5,15 +5,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaTicketAlt, FaTimesCircle, FaQrcode, FaCheckCircle } from 'react-icons/fa';
 
 const PaymentModal = ({ booking, onClose, onSuccess }) => {
-    const [step, setStep] = useState('qr'); // qr -> scanning -> confirm -> done
+    const [step, setStep] = useState('qr'); // qr -> scanning -> confirm -> otp -> done
     const [txnId, setTxnId] = useState('');
+    const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [scanProgress, setScanProgress] = useState(0);
 
     const settings = JSON.parse(localStorage.getItem('eventora_payment_settings') || '{"upiId":"9431585217-3@ybl","name":"Eventora Payments","qrImage":""}');
-    const upiId = settings.upiId || '9431585217-3@ybl';
-    const receiverName = settings.name || 'Eventora Payments';
+    const paymentDetails = booking.paymentDetails || {};
+    const upiId = paymentDetails.upiId || settings.upiId || '9431585217-3@ybl';
+    const receiverName = paymentDetails.upiName || settings.name || 'Eventora Payments';
     const qrImage = settings.qrImage || '';
     const amount = booking.amount;
     const eventTitle = booking.eventId?.title;
@@ -36,12 +38,26 @@ const PaymentModal = ({ booking, onClose, onSuccess }) => {
         }, 60);
     };
 
-    const handleConfirmPayment = async () => {
+    const handleRequestOTP = async () => {
         if (!txnId.trim()) { setError('Please enter Transaction ID'); return; }
         setLoading(true);
         setError('');
         try {
-            await api.put(`/bookings/${booking._id}/pay`, { txnId });
+            await api.post(`/bookings/${booking._id}/pay-otp`);
+            setStep('otp');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to send OTP');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleConfirmPayment = async () => {
+        if (!otp.trim()) { setError('Please enter OTP'); return; }
+        setLoading(true);
+        setError('');
+        try {
+            await api.put(`/bookings/${booking._id}/pay`, { txnId, otp });
             setStep('done');
             setTimeout(() => { onSuccess(); onClose(); }, 2500);
         } catch (err) {
@@ -101,23 +117,86 @@ const PaymentModal = ({ booking, onClose, onSuccess }) => {
                 )}
 
                 {step === 'scanning' && (
-                    <div className="text-center py-4">
-                        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Scanning Payment...</h2>
-                        <p className="text-gray-500 text-sm mb-6">Verifying your UPI transaction</p>
-                        <div className="relative w-40 h-40 mx-auto mb-6">
-                            <div className="w-40 h-40 border-4 border-gray-200 rounded-full"></div>
-                            <div
-                                className="absolute inset-0 rounded-full border-4 border-green-500 border-t-transparent transition-all duration-100"
-                                style={{ transform: `rotate(${scanProgress * 3.6}deg)` }}
-                            ></div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-2xl font-black text-gray-900">{scanProgress}%</span>
+                    <div className="text-center py-2">
+                        <h2 className="text-xl font-extrabold text-gray-900 mb-1">Scanning QR Code…</h2>
+                        <p className="text-gray-400 text-sm mb-5">Hold your phone steady over the QR code</p>
+
+                        {/* Phone frame */}
+                        <div className="relative mx-auto w-48 h-80 bg-gray-950 rounded-[2.5rem] shadow-2xl border-4 border-gray-800 flex flex-col items-center justify-start overflow-hidden mb-5">
+                            {/* Phone notch */}
+                            <div className="w-20 h-5 bg-gray-800 rounded-b-2xl mt-1 z-10"></div>
+
+                            {/* Camera viewfinder area */}
+                            <div className="relative w-36 h-36 mt-4 rounded-xl overflow-hidden bg-gray-900 border border-gray-700">
+                                {/* Dark viewfinder bg with subtle grid */}
+                                <div className="absolute inset-0" style={{
+                                    backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
+                                    backgroundSize: '12px 12px'
+                                }}></div>
+
+                                {/* QR code image inside viewfinder */}
+                                <img
+                                    src={qrApiUrl}
+                                    alt="QR"
+                                    className="absolute inset-0 w-full h-full object-cover opacity-60"
+                                />
+
+                                {/* Corner brackets */}
+                                {[['top-1 left-1','border-t-2 border-l-2'],['top-1 right-1','border-t-2 border-r-2'],['bottom-1 left-1','border-b-2 border-l-2'],['bottom-1 right-1','border-b-2 border-r-2']].map(([pos, border], i) => (
+                                    <div key={i} className={`absolute ${pos} w-5 h-5 ${border} border-green-400 rounded-sm`}></div>
+                                ))}
+
+                                {/* Laser scan line */}
+                                <div
+                                    className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-green-400 to-transparent shadow-[0_0_8px_2px_rgba(74,222,128,0.6)]"
+                                    style={{
+                                        top: `${scanProgress}%`,
+                                        transition: 'top 0.1s linear'
+                                    }}
+                                ></div>
+
+                                {/* Done overlay */}
+                                {scanProgress >= 100 && (
+                                    <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
+                                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                                            <FaCheckCircle className="text-white text-xl" />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
+
+                            {/* Phone bottom status */}
+                            <div className="mt-4 px-3 w-full">
+                                <div className="bg-gray-800 rounded-xl px-3 py-2 text-center">
+                                    <p className="text-green-400 text-[10px] font-bold tracking-wider">
+                                        {scanProgress < 30 ? 'DETECTING QR…' : scanProgress < 60 ? 'READING DATA…' : scanProgress < 90 ? 'VERIFYING…' : 'CONFIRMED ✓'}
+                                    </p>
+                                    <div className="w-full bg-gray-700 rounded-full h-1 mt-1.5">
+                                        <div className="bg-green-400 h-1 rounded-full transition-all duration-100" style={{ width: `${scanProgress}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Home bar */}
+                            <div className="absolute bottom-2 w-16 h-1 bg-gray-600 rounded-full"></div>
                         </div>
-                        <div className="space-y-2 text-sm text-gray-500">
-                            {scanProgress >= 30 && <p className="text-green-600 font-medium">✓ UPI ID verified</p>}
-                            {scanProgress >= 60 && <p className="text-green-600 font-medium">✓ Transaction found</p>}
-                            {scanProgress >= 90 && <p className="text-green-600 font-medium">✓ Amount matched</p>}
+
+                        {/* Step checklist */}
+                        <div className="space-y-1.5 text-sm text-left inline-block">
+                            {[
+                                [30, 'UPI ID verified'],
+                                [60, 'Transaction found'],
+                                [90, 'Amount matched'],
+                            ].map(([threshold, label]) => (
+                                <div key={label} className={`flex items-center gap-2 transition-all ${scanProgress >= threshold ? 'text-green-600' : 'text-gray-300'}`}>
+                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                                        scanProgress >= threshold ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                                    }`}>
+                                        {scanProgress >= threshold && <span className="text-white text-[8px] font-black">✓</span>}
+                                    </div>
+                                    <span className="font-semibold">{label}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -129,7 +208,7 @@ const PaymentModal = ({ booking, onClose, onSuccess }) => {
                                 <FaCheckCircle className="text-green-500 text-3xl" />
                             </div>
                             <h2 className="text-2xl font-extrabold text-gray-900 mb-1">Payment Detected!</h2>
-                            <p className="text-gray-500 text-sm">Enter your Transaction ID to confirm</p>
+                            <p className="text-gray-500 text-sm">Enter your Transaction ID to receive OTP</p>
                         </div>
                         <div className="mb-4">
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Transaction ID / UTR Number</label>
@@ -144,6 +223,36 @@ const PaymentModal = ({ booking, onClose, onSuccess }) => {
                         {error && <p className="text-red-500 text-sm mb-3 text-center">{error}</p>}
                         <div className="flex gap-3">
                             <button onClick={() => setStep('qr')} className="flex-1 border border-gray-300 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-50 transition">Back</button>
+                            <button onClick={handleRequestOTP} disabled={loading} className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition shadow-md">
+                                {loading ? 'Sending OTP...' : 'Get OTP →'}
+                            </button>
+                        </div>
+                    </>
+                )}
+
+                {step === 'otp' && (
+                    <>
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <span className="text-blue-500 text-3xl">📧</span>
+                            </div>
+                            <h2 className="text-2xl font-extrabold text-gray-900 mb-1">Verify Payment</h2>
+                            <p className="text-gray-500 text-sm">OTP sent to your registered email</p>
+                        </div>
+                        <div className="mb-4">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Enter OTP</label>
+                            <input
+                                type="text"
+                                placeholder="6-digit OTP"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-gray-700 transition font-mono text-lg text-center tracking-widest"
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                maxLength={6}
+                            />
+                        </div>
+                        {error && <p className="text-red-500 text-sm mb-3 text-center">{error}</p>}
+                        <div className="flex gap-3">
+                            <button onClick={() => { setStep('confirm'); setError(''); }} className="flex-1 border border-gray-300 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-50 transition">Back</button>
                             <button onClick={handleConfirmPayment} disabled={loading} className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition shadow-md">
                                 {loading ? 'Confirming...' : 'Confirm Payment'}
                             </button>
@@ -250,8 +359,9 @@ const UserDashboard = () => {
                                                 <span className={`px-2 py-1 text-[10px] font-black rounded uppercase tracking-wider ${
                                                     booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
                                                     booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                                    booking.status === 'awaiting_payment' ? 'bg-orange-100 text-orange-700' :
                                                     'bg-yellow-100 text-yellow-700'}`}>
-                                                    {booking.status}
+                                                    {booking.status === 'awaiting_payment' ? 'Awaiting Payment' : booking.status}
                                                 </span>
                                                 {booking.status !== 'cancelled' && (
                                                     <span className={`px-2 py-1 text-[10px] font-black rounded uppercase tracking-wider ${
@@ -263,12 +373,12 @@ const UserDashboard = () => {
                                         </div>
                                         <div className="text-sm text-gray-500 mb-4 space-y-1">
                                             <p><strong className="text-gray-700">Date:</strong> {new Date(booking.eventId.date).toLocaleDateString()}</p>
-                                            <p><strong className="text-gray-700">Amount:</strong> {booking.amount === 0 ? 'Free' : `₹${booking.amount}`}</p>
+                                            <p><strong className="text-gray-700">Amount:</strong> {booking.amount === 0 ? 'Free' : `₹${booking.amount}`}{booking.persons > 1 ? ` (${booking.persons} persons)` : ''}</p>
                                             <p><strong className="text-gray-700">Requested:</strong> {new Date(booking.bookedAt).toLocaleDateString()}</p>
                                         </div>
 
                                         {/* Pay Now button — show when confirmed + not paid + amount > 0 */}
-                                        {booking.status === 'confirmed' && booking.paymentStatus === 'not_paid' && booking.amount > 0 && (
+                                        {(booking.status === 'awaiting_payment' || (booking.status === 'confirmed' && booking.paymentStatus === 'not_paid')) && booking.amount > 0 && (
                                             <button
                                                 onClick={() => setPaymentBooking(booking)}
                                                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-lg transition shadow-md flex items-center justify-center gap-2 mt-2"

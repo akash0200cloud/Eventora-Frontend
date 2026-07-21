@@ -9,15 +9,17 @@ const Register = () => {
     const [otp, setOtp] = useState('');
     const [showOTP, setShowOTP] = useState(false);
     const [error, setError] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { register, verifyOTP } = useContext(AuthContext);
+    const { register, verifyOTP, resendOTP } = useContext(AuthContext);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setSuccessMsg('');
         try {
             if (!showOTP) {
                 await register(name, email, password);
@@ -33,6 +35,20 @@ const Register = () => {
         }
     };
 
+    const handleResendOTP = async () => {
+        if (!email) {
+            setError('Please enter your email first.');
+            return;
+        }
+
+        try {
+            await resendOTP(email);
+            setSuccessMsg('OTP resent successfully. Check your inbox or server terminal in dev mode.');
+        } catch (err) {
+            setError(err.message || 'Failed to resend OTP');
+        }
+    };
+
     return (
         <div className="max-w-md mx-auto mt-16 bg-white p-8 rounded-xl shadow-lg border border-gray-100">
             <div className="text-center mb-8">
@@ -41,6 +57,7 @@ const Register = () => {
             </div>
 
             {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-center shadow-inner border border-red-100">{error}</div>}
+            {successMsg && <div className="bg-green-50 text-green-700 p-3 rounded-lg mb-6 text-center shadow-inner border border-green-100">{successMsg}</div>}
 
             <form onSubmit={handleSubmit} className="space-y-5">
                 {!showOTP ? (
@@ -73,6 +90,9 @@ const Register = () => {
                             onChange={(e) => setOtp(e.target.value)}
                             maxLength="6"
                         />
+                        <button type="button" onClick={handleResendOTP} className="mt-3 text-sm text-gray-700 font-semibold hover:text-black">
+                            Resend OTP
+                        </button>
                     </div>
                 )}
                 <button type="submit" disabled={loading} className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-black focus:ring-4 focus:ring-gray-200 transition shadow-md mt-4">

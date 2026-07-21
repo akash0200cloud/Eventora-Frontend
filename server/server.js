@@ -11,8 +11,18 @@ const bookingRoutes = require('./routes/bookings');
 
 const app = express();
 
+const allowedOrigins = process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(',')
+    : ['http://localhost:5173'];
+
 app.use(cors({
-    origin: process.env.CLIENT_URL || '*',
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.some(o => origin.startsWith(o.trim()))) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 app.use(express.json());

@@ -38,6 +38,15 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const resendOTP = async (email) => {
+        try {
+            const { data } = await api.post('/auth/resend-otp', { email });
+            return data;
+        } catch (error) {
+            throw new Error(error.response?.data?.message || 'Failed to resend OTP');
+        }
+    };
+
     const verifyOTP = async (email, otp) => {
         try {
             const { data } = await api.post('/auth/verify-otp', { email, otp });
@@ -57,7 +66,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, verifyOTP, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, resendOTP, verifyOTP, logout, loading }}>
             {!loading && children}
         </AuthContext.Provider>
     );
