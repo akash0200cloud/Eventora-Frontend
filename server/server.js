@@ -11,19 +11,9 @@ const bookingRoutes = require('./routes/bookings');
 
 const app = express();
 
-const allowedOrigins = process.env.CLIENT_URL
-    ? process.env.CLIENT_URL.split(',')
-    : ['http://localhost:5173'];
-
 app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.some(o => origin.startsWith(o.trim()))) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true
+    origin: '*',
+    credentials: false
 }));
 app.use(express.json());
 
@@ -42,11 +32,10 @@ mongoose.connect(process.env.MONGO_URI)
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
-    if (process.env.RENDER_EXTERNAL_URL) {
-        setInterval(() => {
-            fetch(`${process.env.RENDER_EXTERNAL_URL}/api/health`)
-                .then(() => console.log('🏓 Keep-alive ping sent'))
-                .catch(() => {});
-        }, 14 * 60 * 1000);
-    }
+    const pingUrl = process.env.RENDER_EXTERNAL_URL || `https://eventora-backend-locv.onrender.com`;
+    setInterval(() => {
+        const https = require('https');
+        https.get(`${pingUrl}/api/health`, () => console.log('🏓 Keep-alive ping sent'))
+            .on('error', () => {});
+    }, 14 * 60 * 1000);
 });
