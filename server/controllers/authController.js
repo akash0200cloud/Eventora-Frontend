@@ -14,9 +14,7 @@ const createAndSendOTP = async (email) => {
     const otp = generateOTP();
     await OTP.findOneAndDelete({ email, action: 'account_verification' });
     await OTP.create({ email, otp, action: 'account_verification' });
-    sendOTPEmail(email, otp, 'account_verification').catch(err =>
-        console.error('Email send error:', err.message)
-    );
+    await sendOTPEmail(email, otp, 'account_verification');
     return otp;
 };
 
