@@ -118,6 +118,9 @@ const Login = () => {
             <p className="text-center mt-8 text-gray-600">
                 Don't have an account? <Link to="/register" className="text-gray-900 font-bold hover:underline">Sign up</Link>
             </p>
+            <p className="text-center mt-2 text-gray-600">
+                <Link to="/forgot-password" className="text-gray-500 hover:text-gray-900 text-sm hover:underline">Forgot Password?</Link>
+            </p>
         </div>
     );
 };
