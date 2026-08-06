@@ -2,12 +2,6 @@ const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const isEmailConfigured = () =>
-    process.env.EMAIL_USER &&
-    process.env.EMAIL_PASS &&
-    process.env.EMAIL_USER !== 'your_gmail@gmail.com' &&
-    process.env.EMAIL_PASS !== 'your_gmail_app_password';
-
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
@@ -24,10 +18,6 @@ transporter.verify(err => {
 });
 
 const sendOTPEmail = async (userEmail, otp, type) => {
-    if (!isEmailConfigured()) {
-        console.log(`[DEV MODE] OTP for ${userEmail}: ${otp}`);
-        return;
-    }
     const title = type === 'account_verification'
         ? 'Verify your Eventora Account'
         : type === 'payment_confirm'
@@ -68,10 +58,6 @@ const sendOTPEmail = async (userEmail, otp, type) => {
 };
 
 const sendBookingEmail = async (userEmail, userName, eventTitle, amount, paymentStatus, paymentDetails = {}) => {
-    if (!isEmailConfigured()) {
-        console.log(`[DEV] Booking email skipped for ${userEmail}`);
-        return;
-    }
     const isFree = amount === 0;
     const isPaid = paymentStatus === 'paid';
     const upiId = paymentDetails.upiId || process.env.UPI_ID || '9431585217-3@ybl';
@@ -115,10 +101,6 @@ const sendBookingEmail = async (userEmail, userName, eventTitle, amount, payment
 };
 
 const sendPaymentInstructionsEmail = async (userEmail, userName, eventTitle, amount, paymentDetails = {}) => {
-    if (!isEmailConfigured()) {
-        console.log(`[DEV] Payment instructions email skipped for ${userEmail}`);
-        return;
-    }
     const upiId = paymentDetails.upiId || process.env.UPI_ID || '9431585217-3@ybl';
     const upiName = paymentDetails.upiName || process.env.UPI_NAME || 'Eventora Payments';
     const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${amount}&cu=INR&tn=${encodeURIComponent('Eventora: ' + eventTitle)}`;
