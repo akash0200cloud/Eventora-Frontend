@@ -38,22 +38,29 @@ const sendOTPEmail = async (userEmail, otp, type) => {
         : type === 'payment_confirm'
         ? 'Use this OTP to confirm your UPI payment for the event booking.'
         : 'Use this OTP to confirm your event booking.';
-    try {
-        await transporter.sendMail({
-            from: `"Eventora" <${process.env.EMAIL_USER}>`,
-            to: userEmail,
-            subject: title,
-            html: `
-                <div style="font-family:Arial,sans-serif;text-align:center;padding:20px;">
-                    <h2>${title}</h2>
-                    <p>${msg}</p>
-                    <div style="margin:20px auto;padding:15px;font-size:28px;font-weight:bold;background:#f4f4f4;width:max-content;letter-spacing:8px;">${otp}</div>
-                    <p style="color:#999;font-size:12px;">Expires in 5 minutes.</p>
-                </div>`
-        });
-        console.log(`✅ OTP sent to ${userEmail}`);
-    } catch (error) {
-        console.error('❌ Error sending OTP email:', error.message);
+
+    const mailOptions = {
+        from: `"Eventora" <${process.env.EMAIL_USER}>`,
+        to: userEmail,
+        subject: title,
+        html: `
+            <div style="font-family:Arial,sans-serif;text-align:center;padding:20px;">
+                <h2>${title}</h2>
+                <p>${msg}</p>
+                <div style="margin:20px auto;padding:15px;font-size:28px;font-weight:bold;background:#f4f4f4;width:max-content;letter-spacing:8px;">${otp}</div>
+                <p style="color:#999;font-size:12px;">Expires in 10 minutes.</p>
+            </div>`
+    };
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            await transporter.sendMail(mailOptions);
+            console.log(`✅ OTP sent to ${userEmail}`);
+            return;
+        } catch (error) {
+            console.error(`❌ OTP attempt ${attempt} failed:`, error.message);
+            if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
+        }
     }
 };
 
