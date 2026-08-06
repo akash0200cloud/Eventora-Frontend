@@ -52,16 +52,19 @@ const sendOTPEmail = async (userEmail, otp, type) => {
             </div>`
     };
 
+    let lastError;
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             await transporter.sendMail(mailOptions);
             console.log(`✅ OTP sent to ${userEmail}`);
             return;
         } catch (error) {
+            lastError = error;
             console.error(`❌ OTP attempt ${attempt} failed:`, error.message);
             if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
         }
     }
+    throw new Error(`Failed to send OTP after 3 attempts: ${lastError?.message}`);
 };
 
 const sendBookingEmail = async (userEmail, userName, eventTitle, amount, paymentStatus, paymentDetails = {}) => {

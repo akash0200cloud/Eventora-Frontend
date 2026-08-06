@@ -12,13 +12,16 @@ const getPaymentDetails = () => ({
 
 exports.sendBookingOTP = async (req, res) => {
     try {
+        const email = req.user.email;
+        console.log(`📧 Sending booking OTP to: ${email}`);
         const otp = generateOTP();
-        await OTP.findOneAndDelete({ email: req.user.email, action: 'event_booking' });
-        await OTP.create({ email: req.user.email, otp, action: 'event_booking' });
-        await sendOTPEmail(req.user.email, otp, 'event_booking');
+        await OTP.findOneAndDelete({ email, action: 'event_booking' });
+        await OTP.create({ email, otp, action: 'event_booking' });
+        await sendOTPEmail(email, otp, 'event_booking');
         res.json({ message: 'OTP sent successfully' });
     } catch (error) {
-        res.status(500).json({ message: 'Error sending OTP', error: error.message });
+        console.error('❌ sendBookingOTP error:', error.message);
+        res.status(500).json({ message: 'Failed to send OTP. Please try again.', error: error.message });
     }
 };
 
