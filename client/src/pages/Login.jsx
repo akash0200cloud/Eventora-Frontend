@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -11,8 +11,13 @@ const Login = () => {
     const [successMsg, setSuccessMsg] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { login, verifyOTP, resendOTP } = useContext(AuthContext);
+    const { login, verifyOTP, resendOTP, logout } = useContext(AuthContext);
     const navigate = useNavigate();
+
+    // Clear any stale token from previous sessions (e.g. from Render)
+    useEffect(() => {
+        logout();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

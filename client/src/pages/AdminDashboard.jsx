@@ -28,27 +28,19 @@ const PaymentHistory = ({ bookings }) => {
         <div>
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                        <p className="text-green-700 text-xs font-bold uppercase tracking-wider mb-1">Total Collected</p>
-                        <p className="text-3xl font-black text-green-700">₹{totalRevenue}</p>
+                {[
+                    { label: 'Total Collected', value: `₹${totalRevenue}`, icon: '✅', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', iconBg: 'bg-green-200' },
+                    { label: 'Pending Collection', value: `₹${pendingAmount}`, icon: '⏳', bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', iconBg: 'bg-yellow-200' },
+                    { label: 'Total Transactions', value: bookings.filter(b => b.paymentStatus === 'paid').length, icon: '💳', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', iconBg: 'bg-blue-200' },
+                ].map(s => (
+                    <div key={s.label} className={`group ${s.bg} border ${s.border} rounded-2xl p-5 flex items-center justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-default`}>
+                        <div>
+                            <p className={`${s.text} text-xs font-bold uppercase tracking-wider mb-1`}>{s.label}</p>
+                            <p className={`text-3xl font-black ${s.text}`}>{s.value}</p>
+                        </div>
+                        <div className={`w-12 h-12 ${s.iconBg} rounded-full flex items-center justify-center text-xl group-hover:scale-110 transition-transform duration-300`}>{s.icon}</div>
                     </div>
-                    <div className="w-12 h-12 bg-green-200 rounded-full flex items-center justify-center text-xl">✅</div>
-                </div>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                        <p className="text-yellow-700 text-xs font-bold uppercase tracking-wider mb-1">Pending Collection</p>
-                        <p className="text-3xl font-black text-yellow-700">₹{pendingAmount}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-yellow-200 rounded-full flex items-center justify-center text-xl">⏳</div>
-                </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                        <p className="text-blue-700 text-xs font-bold uppercase tracking-wider mb-1">Total Transactions</p>
-                        <p className="text-3xl font-black text-blue-700">{bookings.filter(b => b.paymentStatus === 'paid').length}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-200 rounded-full flex items-center justify-center text-xl">💳</div>
-                </div>
+                ))}
             </div>
 
             {/* Filters + Search */}
@@ -63,8 +55,8 @@ const PaymentHistory = ({ bookings }) => {
                 <div className="flex gap-2">
                     {['all', 'paid', 'not_paid', 'free'].map(f => (
                         <button key={f} onClick={() => setFilter(f)}
-                            className={`px-3 py-2 rounded-lg text-xs font-bold transition ${
-                                filter === f ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 hover:-translate-y-0.5 ${
+                                filter === f ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
                             }`}>
                             {f === 'all' ? 'All' : f === 'paid' ? '✅ Paid' : f === 'not_paid' ? '⏳ Pending' : '🆓 Free'}
                         </button>
@@ -91,7 +83,7 @@ const PaymentHistory = ({ bookings }) => {
                             {filtered.length === 0 ? (
                                 <tr><td colSpan="7" className="text-center py-12 text-gray-400">No records found.</td></tr>
                             ) : filtered.map((b, i) => (
-                                <tr key={b._id} className="hover:bg-gray-50 transition">
+                                <tr key={b._id} className="hover:bg-blue-50/30 transition-colors duration-150 cursor-default">
                                     <td className="px-5 py-4 text-gray-400 font-mono text-xs">{i + 1}</td>
                                     <td className="px-5 py-4">
                                         <p className="font-bold text-gray-900">{b.userId?.name}</p>
@@ -259,38 +251,43 @@ const AdminDashboard = () => {
         }
     };
 
-    if (loading) return <div className="text-center py-20 text-xl font-semibold">Loading admin panel...</div>;
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-gray-500 font-medium">Loading admin panel...</p>
+        </div>
+    );
 
     return (
         <div className="max-w-7xl mx-auto">
-            <div className="bg-black text-white rounded-2xl p-6 sm:p-8 mb-8 shadow-lg flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
+            <div className="animate-fade-down delay-0 bg-gradient-to-br from-gray-950 to-gray-800 text-white rounded-3xl p-6 sm:p-8 mb-8 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold mb-2">Admin Dashboard</h1>
-                    <p className="text-gray-300">Manage events and manually confirm bookings.</p>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold mb-2">⚡ Admin Dashboard</h1>
+                    <p className="text-gray-400">Manage events and confirm bookings.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                     <button
                         onClick={() => { setShowPaymentSettings(true); setPaySettingsForm(paymentSettings); }}
-                        className="w-full sm:w-auto bg-gray-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-600 transition shadow-md"
+                        className="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5"
                     >
                         💳 Payment Settings
                     </button>
                     <button
                         onClick={() => setShowEventForm(!showEventForm)}
-                        className="w-full md:w-auto bg-white text-black font-bold py-3 px-6 rounded-lg hover:bg-gray-100 transition shadow-md"
+                        className="w-full md:w-auto bg-white text-black font-bold py-3 px-6 rounded-xl hover:bg-gray-100 transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                     >
-                        {showEventForm ? 'Cancel Creation' : '+ Create New Event'}
+                        {showEventForm ? '✕ Cancel' : '+ Create New Event'}
                     </button>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 mb-8 border-b border-gray-200">
-                <button onClick={() => setActiveTab('dashboard')} className={`px-5 py-2.5 font-bold text-sm rounded-t-lg transition ${activeTab === 'dashboard' ? 'bg-white border border-b-white border-gray-200 text-gray-900 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}>📋 Dashboard</button>
-                <button onClick={() => setActiveTab('history')} className={`px-5 py-2.5 font-bold text-sm rounded-t-lg transition ${activeTab === 'history' ? 'bg-white border border-b-white border-gray-200 text-gray-900 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}>
+            <div className="animate-fade-up delay-100 flex gap-2 mb-8 border-b border-gray-200">
+                <button onClick={() => setActiveTab('dashboard')} className={`px-5 py-2.5 font-bold text-sm rounded-t-lg transition-all duration-200 ${activeTab === 'dashboard' ? 'bg-white border border-b-white border-gray-200 text-gray-900 -mb-px shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>📋 Dashboard</button>
+                <button onClick={() => setActiveTab('history')} className={`px-5 py-2.5 font-bold text-sm rounded-t-lg transition-all duration-200 ${activeTab === 'history' ? 'bg-white border border-b-white border-gray-200 text-gray-900 -mb-px shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>
                     💳 Payment History
                     {bookings.filter(b => b.paymentStatus === 'paid').length > 0 && (
-                        <span className="ml-2 bg-green-500 text-white text-xs font-black px-2 py-0.5 rounded-full">{bookings.filter(b => b.paymentStatus === 'paid').length}</span>
+                        <span className="ml-2 bg-green-500 text-white text-xs font-black px-2 py-0.5 rounded-full animate-pulse">{bookings.filter(b => b.paymentStatus === 'paid').length}</span>
                     )}
                 </button>
             </div>
@@ -298,27 +295,19 @@ const AdminDashboard = () => {
             {activeTab === 'history' && <PaymentHistory bookings={bookings} />}
             {activeTab === 'dashboard' && <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                    <div>
-                        <p className="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">Total Revenue</p>
-                        <h3 className="text-3xl font-black text-green-600">₹{bookings.reduce((sum, b) => b.paymentStatus === 'paid' && b.status === 'confirmed' ? sum + b.amount : sum, 0)}</h3>
+                {[
+                    { label: 'Total Revenue', value: `₹${bookings.reduce((sum, b) => b.paymentStatus === 'paid' && b.status === 'confirmed' ? sum + b.amount : sum, 0)}`, icon: '₹', iconBg: 'bg-green-100', iconText: 'text-green-500', valText: 'text-green-600', delay: 'delay-100' },
+                    { label: 'Paid Clients', value: new Set(bookings.filter(b => b.paymentStatus === 'paid' && b.status === 'confirmed').map(b => b.userId?._id)).size, icon: '👤', iconBg: 'bg-blue-100', iconText: 'text-blue-500', valText: 'text-blue-600', delay: 'delay-200' },
+                    { label: 'Pending Requests', value: bookings.filter(b => b.status === 'pending').length, icon: '⏳', iconBg: 'bg-yellow-100', iconText: 'text-yellow-600', valText: 'text-yellow-600', delay: 'delay-300' },
+                ].map(s => (
+                    <div key={s.label} className={`group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-xl hover:-translate-y-1 hover:border-indigo-100 transition-all duration-300 cursor-default animate-fade-up ${s.delay}`}>
+                        <div>
+                            <p className="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">{s.label}</p>
+                            <h3 className={`text-3xl font-black ${s.valText}`}>{s.value}</h3>
+                        </div>
+                        <div className={`w-12 h-12 ${s.iconBg} ${s.iconText} rounded-full flex items-center justify-center text-xl font-bold group-hover:scale-110 transition-transform duration-300`}>{s.icon}</div>
                     </div>
-                    <div className="w-12 h-12 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-xl font-bold">₹</div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                    <div>
-                        <p className="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">Paid Clients</p>
-                        <h3 className="text-3xl font-black text-blue-600">{new Set(bookings.filter(b => b.paymentStatus === 'paid' && b.status === 'confirmed').map(b => b.userId?._id)).size}</h3>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center text-xl font-bold">👤</div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                    <div>
-                        <p className="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">Pending Requests</p>
-                        <h3 className="text-3xl font-black text-yellow-600">{bookings.filter(b => b.status === 'pending').length}</h3>
-                    </div>
-                    <div className="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-xl font-bold">⏳</div>
-                </div>
+                ))}
             </div>
 
             {showEventForm && (
@@ -408,7 +397,7 @@ const AdminDashboard = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Events Section */}
-                <div className="flex flex-col">
+                <div className="flex flex-col animate-fade-left delay-200">
                     <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3">
                         <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-600 text-sm">{events.length}</span>
                         All Events
@@ -417,20 +406,20 @@ const AdminDashboard = () => {
                         <ul className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
                             {events.length === 0 ? <li className="p-6 text-gray-500 text-center">No events created yet.</li> :
                                 events.map(event => (
-                                    <li key={event._id} className="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-gray-50 transition border-b border-gray-100 last:border-0">
+                                    <li key={event._id} className="group p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-blue-50/40 transition-all duration-200 border-b border-gray-100 last:border-0">
                                         <div>
-                                            <h4 className="font-bold text-gray-900 mb-1 leading-tight">{event.title}</h4>
+                                            <h4 className="font-bold text-gray-900 mb-1 leading-tight group-hover:text-blue-700 transition-colors duration-200">{event.title}</h4>
                                             <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
                                                 <span className="flex items-center gap-1 font-medium"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {new Date(event.date).toLocaleDateString()}</span>
                                                 <span className="flex items-center gap-1 font-medium"><div className={`w-2 h-2 rounded-full ${event.availableSeats > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div> {event.availableSeats}/{event.totalSeats} seats</span>
                                             </div>
                                         </div>
                                         <div className="flex gap-2 shrink-0 w-full sm:w-auto">
-                                            <button onClick={() => handleEditClick(event)} className="flex-1 sm:flex-none text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
-                                                Edit
+                                            <button onClick={() => handleEditClick(event)} className="flex-1 sm:flex-none text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                                                ✏️ Edit
                                             </button>
-                                            <button onClick={() => handleDeleteEvent(event._id)} className="flex-1 sm:flex-none text-red-500 hover:text-white hover:bg-red-500 border border-red-200 px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
-                                                Delete
+                                            <button onClick={() => handleDeleteEvent(event._id)} className="flex-1 sm:flex-none text-red-500 hover:text-white hover:bg-red-500 border border-red-200 px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                                                🗑️ Delete
                                             </button>
                                         </div>
                                     </li>
@@ -441,7 +430,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Bookings Section */}
-                <div className="flex flex-col">
+                <div className="flex flex-col animate-fade-right delay-200">
                     <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3">
                         <span className="flex items-center justify-center w-8 h-8 rounded-full bg-yellow-100 text-yellow-700 text-sm font-bold">{bookings.length}</span>
                         Booking Requests
@@ -450,7 +439,7 @@ const AdminDashboard = () => {
                         <ul className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
                             {bookings.length === 0 ? <li className="p-6 text-gray-500 text-center">No bookings yet.</li> :
                                 bookings.map(booking => (
-                                    <li key={booking._id} className={`p-6 hover:bg-gray-50 transition border-l-4 ${booking.status === 'pending' ? 'border-l-yellow-400' : booking.status === 'confirmed' ? 'border-l-green-400' : 'border-l-red-400'}`}>
+                                    <li key={booking._id} className={`group p-6 hover:bg-gray-50/80 transition-all duration-200 border-l-4 ${booking.status === 'pending' ? 'border-l-yellow-400 hover:border-l-yellow-500' : booking.status === 'confirmed' ? 'border-l-green-400 hover:border-l-green-500' : 'border-l-red-400 hover:border-l-red-500'}`}>
                                         <div className="flex justify-between items-start mb-3">
                                             <h4 className="font-bold text-gray-900 text-lg leading-tight">{booking.eventId?.title || 'Deleted Event'}</h4>
                                             <div className="flex flex-col gap-1 items-end shrink-0 ml-4">
@@ -484,13 +473,16 @@ const AdminDashboard = () => {
                                         {/* Action buttons for admin */}
                                         {booking.status === 'pending' && (
                                             <div className="flex flex-wrap gap-2 mt-2">
-                                                <button onClick={() => handleConfirmBooking(booking._id, 'paid')} className="flex-1 min-w-[120px] bg-green-50 text-green-700 hover:bg-green-600 hover:text-white border border-green-200 text-xs font-bold py-2.5 px-3 rounded-lg shadow-sm transition">
-                                                    📲 Send UPI Request
-                                                </button>
-                                                <button onClick={() => handleConfirmBooking(booking._id, 'not_paid')} className="flex-1 min-w-[120px] bg-gray-50 text-gray-700 hover:bg-gray-800 hover:text-white border border-gray-200 text-xs font-bold py-2.5 px-3 rounded-lg shadow-sm transition">
-                                                    ✓ Approve Free
-                                                </button>
-                                                <button onClick={() => handleCancelBooking(booking._id)} className="w-[80px] bg-red-50 text-red-600 hover:bg-red-500 hover:text-white border border-red-200 text-xs font-bold py-2.5 px-3 rounded-lg transition">
+                                                {booking.amount > 0 ? (
+                                                    <button onClick={() => handleConfirmBooking(booking._id, 'not_paid')} className="flex-1 min-w-[140px] bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white border border-blue-200 text-xs font-bold py-2.5 px-3 rounded-lg shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+                                                        💳 Approve for Razorpay
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => handleConfirmBooking(booking._id, 'paid')} className="flex-1 min-w-[120px] bg-green-50 text-green-700 hover:bg-green-600 hover:text-white border border-green-200 text-xs font-bold py-2.5 px-3 rounded-lg shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+                                                        ✓ Approve Free
+                                                    </button>
+                                                )}
+                                                <button onClick={() => handleCancelBooking(booking._id)} className="w-[80px] bg-red-50 text-red-600 hover:bg-red-500 hover:text-white border border-red-200 text-xs font-bold py-2.5 px-3 rounded-lg transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
                                                     ✕ Reject
                                                 </button>
                                             </div>
