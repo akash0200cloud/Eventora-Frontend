@@ -3,7 +3,7 @@ const Booking = require('../models/Booking');
 const Event = require('../models/Event');
 const User = require('../models/User');
 const { protect, admin } = require('../middleware/auth');
-const { sendBookingEmail, sendOTPEmail } = require('../utils/email');
+const { sendBookingEmail, sendOTPEmail, sendPaymentInstructionsEmail } = require('../utils/email');
 
 const router = express.Router();
 const generateOTP = () => String(Math.floor(100000 + Math.random() * 900000));
@@ -138,6 +138,12 @@ router.put('/:id/confirm', protect, admin, async (req, res) => {
     } else if (paymentStatus === 'not_paid') {
       booking.paymentStatus = 'not_paid';
       booking.status = 'awaiting_payment';
+      if (user) {
+        sendPaymentInstructionsEmail(
+          user.email, user.name, event.title, booking.amount,
+          { upiId: process.env.UPI_ID, upiName: process.env.UPI_NAME }
+        ).catch(err => console.error('Payment instructions email error:', err.message));
+      }
     } else {
       booking.paymentStatus = booking.amount === 0 ? 'paid' : 'not_paid';
       booking.status = booking.amount === 0 ? 'confirmed' : 'awaiting_payment';

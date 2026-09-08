@@ -33,8 +33,20 @@ const PaymentModal = ({ booking, onClose, onSuccess }) => {
                         setTimeout(() => onClose(), 2500);
                     } catch { setError('Payment verification failed. Contact support.'); }
                 },
-                prefill: { email: booking.userId?.email || '' },
+                prefill: { email: booking.userId?.email || '', contact: '' },
+                vpa: data.upiId,
                 theme: { color: '#111827' },
+                method: { upi: 1, card: 1, netbanking: 1, wallet: 1 },
+                config: {
+                    display: {
+                        blocks: {
+                            utib: { name: 'Pay via UPI', instruments: [{ method: 'upi' }] },
+                            other: { name: 'Other Methods', instruments: [{ method: 'card' }, { method: 'netbanking' }] }
+                        },
+                        sequence: ['block.utib', 'block.other'],
+                        preferences: { show_default_blocks: false }
+                    }
+                },
                 notes: { upi_id: data.upiId },
                 modal: { ondismiss: () => setLoading(false) }
             };
