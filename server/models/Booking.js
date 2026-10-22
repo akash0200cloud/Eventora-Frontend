@@ -12,11 +12,15 @@ const bookingSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ['not_paid', 'paid'],
+    enum: ['not_paid', 'paid', 'refund_pending', 'refunded'],
     default: 'not_paid'
   },
+  razorpayOrderId: { type: String, default: '' },
   txnId: { type: String, default: '' },
-  bookedAt: { type: Date, default: Date.now }
+  bookedAt: { type: Date, default: Date.now },
+  cancelledAt: { type: Date, default: null },
+  refundStatus: { type: String, enum: ['none', 'pending', 'processed'], default: 'none' },
+  cancellationNote: { type: String, default: '' }
 }, {
   timestamps: true
 });

@@ -1,175 +1,170 @@
 const nodemailer = require('nodemailer');
-const dotenv = require('dotenv');
-dotenv.config();
 
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS || ''
+        pass: process.env.EMAIL_PASS,
+    },
+    tls: { rejectUnauthorized: false },
+});
+
+const sendMail = async (options) => {
+    try {
+        const info = await transporter.sendMail(options);
+        console.log('✅ Email sent to:', options.to, '| ID:', info.messageId);
+        return true;
+    } catch (err) {
+        console.error('❌ Email send error:', err.message);
+        return false;
     }
-});
+};
 
-transporter.verify(err => {
-    if (err) console.error('❌ Email transporter error:', err.message);
-    else console.log('✅ Email transporter ready');
-});
+const wrap = (content) => `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+<tr><td style="background:#111;padding:24px 32px;text-align:center;">
+<span style="color:#fff;font-size:22px;font-weight:900;letter-spacing:-0.5px;">🎟️ Eventora</span>
+</td></tr>
+<tr><td style="padding:32px;">${content}</td></tr>
+<tr><td style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
+<p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} Eventora Platform · All rights reserved</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
 
-const sendOTPEmail = async (userEmail, otp, type) => {
-    const title = type === 'account_verification'
-        ? 'Verify your Eventora Account'
-        : type === 'payment_confirm'
-        ? 'Eventora Payment Verification'
-        : 'Eventora Booking Verification';
-    const msg = type === 'account_verification'
-        ? 'Use this OTP to verify your Eventora account.'
-        : type === 'payment_confirm'
-        ? 'Use this OTP to confirm your UPI payment for the event booking.'
-        : 'Use this OTP to confirm your event booking.';
+const sendOTPEmail = async (email, name, otp, purpose = 'account_verification') => {
+    const isBooking = purpose === 'booking_verification';
+    const isReset = purpose === 'password_reset';
+    const subject = isBooking ? 'Booking OTP – Eventora' : isReset ? 'Password Reset OTP – Eventora' : 'Verify Your Account – Eventora';
+    const purposeText = isBooking ? 'confirm your event booking' : isReset ? 'reset your password' : 'verify your account';
 
-    const mailOptions = {
+    return sendMail({
         from: `"Eventora" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject,
+        html: wrap(`
+            <h2 style="color:#111;margin-top:0;">Hi ${name || 'there'} 👋</h2>
+            <p style="color:#555;">Use the OTP below to <strong>${purposeText}</strong>. It expires in <strong>10 minutes</strong>.</p>
+            <div style="text-align:center;margin:28px 0;">
+                <span style="display:inline-block;background:#111;color:#fff;font-size:36px;font-weight:900;letter-spacing:12px;padding:18px 32px;border-radius:12px;">${otp}</span>
+            </div>
+            <p style="color:#9ca3af;font-size:13px;text-align:center;">Do not share this OTP with anyone.</p>
+        `),
+    });
+};
+
+const sendBookingConfirmationEmail = async (email, name, eventTitle, amount, bookingId) => {
+    return sendMail({
+        from: `"Eventora" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Booking Confirmed: ${eventTitle}`,
+        html: wrap(`
+            <h2 style="color:#111;margin-top:0;">Booking Confirmed! 🎉</h2>
+            <p style="color:#555;">Hi <strong>${name}</strong>, your booking for <strong>${eventTitle}</strong> has been confirmed.</p>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin:20px 0;">
+                <p style="margin:0 0 6px;color:#166534;font-size:13px;font-weight:bold;">BOOKING DETAILS</p>
+                <p style="margin:0;color:#15803d;">Amount: <strong>${amount === 0 ? 'Free' : '₹' + amount}</strong></p>
+                <p style="margin:4px 0 0;color:#15803d;font-size:12px;">Booking ID: ${bookingId}</p>
+            </div>
+            <p style="color:#555;">Please carry a valid ID to the event. See you there!</p>
+        `),
+    });
+};
+
+// Alias — bookings.js calls sendBookingEmail(email, name, title, date, location, amount, paymentStatus)
+// We only use email, name, title, amount — extra args are ignored
+const sendBookingEmail = (email, name, eventTitle, _date, _location, amount, _payStatus) =>
+    sendBookingConfirmationEmail(email, name, eventTitle, amount, '');
+
+const sendPaymentConfirmationEmail = async (email, name, eventTitle, amount, txnId) => {
+    return sendMail({
+        from: `"Eventora" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Payment Confirmed: ${eventTitle}`,
+        html: wrap(`
+            <h2 style="color:#111;margin-top:0;">Payment Successful! ✅</h2>
+            <p style="color:#555;">Hi <strong>${name}</strong>, your payment for <strong>${eventTitle}</strong> has been received.</p>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin:20px 0;">
+                <p style="margin:0 0 6px;color:#1e40af;font-size:13px;font-weight:bold;">PAYMENT DETAILS</p>
+                <p style="margin:0;color:#1d4ed8;">Amount Paid: <strong>₹${amount}</strong></p>
+                <p style="margin:4px 0 0;color:#1d4ed8;font-size:12px;">Transaction ID: ${txnId}</p>
+            </div>
+            <p style="color:#555;">Your seat is confirmed. Enjoy the event!</p>
+        `),
+    });
+};
+
+// bookings.js calls sendPaymentInstructionsEmail(email, name, title, date, location, amount, {upiId, upiName})
+// Signature normalised: (email, name, eventTitle, _date, _location, amount, opts)
+const sendPaymentInstructionsEmail = (email, name, eventTitle, _date, _location, amount, opts = {}) => {
+    const upiId = opts?.upiId || process.env.UPI_ID || 'N/A';
+    const upiName = opts?.upiName || process.env.UPI_NAME || 'Eventora';
+    return sendMail({
+        from: `"Eventora" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Payment Instructions: ${eventTitle}`,
+        html: wrap(`
+            <h2 style="color:#111;margin-top:0;">Complete Your Payment 💳</h2>
+            <p style="color:#555;">Hi <strong>${name}</strong>, your booking for <strong>${eventTitle}</strong> has been approved. Please complete the payment to confirm your seat.</p>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px;margin:20px 0;">
+                <p style="margin:0 0 6px;color:#92400e;font-size:13px;font-weight:bold;">PAYMENT DETAILS</p>
+                <p style="margin:0;color:#78350f;">Amount: <strong>₹${amount}</strong></p>
+                <p style="margin:4px 0 0;color:#78350f;">UPI ID: <strong>${upiId}</strong></p>
+                <p style="margin:4px 0 0;color:#78350f;">Pay To: <strong>${upiName}</strong></p>
+            </div>
+            <p style="color:#555;">After payment, share the transaction ID with the admin for confirmation.</p>
+        `),
+    });
+};
+
+const sendCancellationEmail = async (email, name, eventTitle, amount, isRefundable) => {
+    return sendMail({
+        from: `"Eventora" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Booking Cancelled: ${eventTitle}`,
+        html: wrap(`
+            <h2 style="color:#111;margin-top:0;">Booking Cancelled</h2>
+            <p style="color:#555;">Hi <strong>${name}</strong>, your booking for <strong>${eventTitle}</strong> has been cancelled.</p>
+            ${amount > 0 && isRefundable ? `<p style="color:#555;">A refund of <strong>₹${amount}</strong> will be processed within 3-5 business days.</p>` : ''}
+            <p style="color:#555;">If you have any questions, please contact our support team.</p>
+        `),
+    });
+};
+
+const sendEnquiryReplyEmail = async (userEmail, userName, subject, originalMessage, replyMessage) => {
+    return sendMail({
+        from: `"Eventora Support" <${process.env.EMAIL_USER}>`,
         to: userEmail,
-        subject: title,
-        html: `
-            <div style="font-family:Arial,sans-serif;text-align:center;padding:20px;">
-                <h2>${title}</h2>
-                <p>${msg}</p>
-                <div style="margin:20px auto;padding:15px;font-size:28px;font-weight:bold;background:#f4f4f4;width:max-content;letter-spacing:8px;">${otp}</div>
-                <p style="color:#999;font-size:12px;">Expires in 10 minutes.</p>
-            </div>`
-    };
-
-    let lastError;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-            await transporter.sendMail(mailOptions);
-            console.log(`✅ OTP sent to ${userEmail}`);
-            return;
-        } catch (error) {
-            lastError = error;
-            console.error(`❌ OTP attempt ${attempt} failed:`, error.message);
-            if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
-        }
-    }
-    console.error(`❌ All OTP attempts failed for ${userEmail}: ${lastError?.message}`);
-    console.warn(`⚠️  DEV FALLBACK — OTP for ${userEmail} is: ${otp}`);
+        subject: `Re: ${subject || 'Your Eventora Enquiry'}`,
+        html: wrap(`
+            <h2 style="color:#111;margin-top:0;">Hi ${userName || 'there'} 👋</h2>
+            <p style="color:#555;">Thank you for contacting <strong>Eventora</strong>. Our team has replied to your enquiry.</p>
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:20px 0;">
+                <p style="margin:0 0 8px;color:#6b7280;font-size:12px;font-weight:bold;">YOUR ENQUIRY</p>
+                <p style="margin:0 0 10px;color:#111;font-weight:bold;">${subject || 'General Enquiry'}</p>
+                <p style="margin:0;color:#555;font-size:14px;line-height:1.6;">${originalMessage}</p>
+            </div>
+            <div style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:8px;padding:18px;margin:20px 0;">
+                <p style="margin:0 0 8px;color:#1e40af;font-size:12px;font-weight:bold;">EVENTORA SUPPORT REPLY</p>
+                <p style="margin:0;color:#1e3a8a;font-size:14px;line-height:1.7;white-space:pre-line;">${replyMessage}</p>
+            </div>
+            <p style="color:#9ca3af;font-size:12px;text-align:center;margin-top:20px;">If you have further questions, feel free to contact us again.</p>
+        `),
+    });
 };
 
-const sendBookingEmail = async (userEmail, userName, eventTitle, amount, paymentStatus, paymentDetails = {}) => {
-    const isFree = amount === 0;
-    const isPaid = paymentStatus === 'paid';
-    const upiId = paymentDetails.upiId || process.env.UPI_ID || '9431585217-3@ybl';
-    const upiName = paymentDetails.upiName || process.env.UPI_NAME || 'Eventora Payments';
-
-    const paymentSection = isFree
-        ? `<div style="background:#d1fae5;border-left:4px solid #10b981;padding:16px;border-radius:8px;margin:20px 0;">
-            <p style="margin:0;color:#065f46;font-weight:bold;">✅ This is a FREE event — No payment required!</p>
-           </div>`
-        : isPaid
-        ? `<div style="background:#d1fae5;border-left:4px solid #10b981;padding:16px;border-radius:8px;margin:20px 0;">
-            <p style="margin:0;color:#065f46;font-weight:bold;">✅ Payment of ₹${amount} received. You're all set!</p>
-           </div>`
-        : `<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px;border-radius:8px;margin:20px 0;">
-            <p style="margin:0 0 8px;color:#78350f;"><strong>Amount Due:</strong> ₹${amount}</p>
-            <p style="margin:0 0 8px;color:#78350f;"><strong>UPI ID:</strong> ${upiId}</p>
-            <p style="margin:0;color:#78350f;"><strong>UPI Name:</strong> ${upiName}</p>
-           </div>`;
-    try {
-        await transporter.sendMail({
-            from: `"Eventora" <${process.env.EMAIL_USER}>`,
-            to: userEmail,
-            subject: `🎉 Booking Confirmed: ${eventTitle}`,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;">
-                    <div style="background:#111;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
-                        <h1 style="color:#fff;margin:0;">🎟️ Eventora</h1>
-                    </div>
-                    <div style="background:#fff;padding:28px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
-                        <h2 style="color:#111;">Hi ${userName}! 🎉</h2>
-                        <p style="color:#555;">Your booking for <strong>${eventTitle}</strong> is confirmed.</p>
-                        ${paymentSection}
-                        <p style="color:#9ca3af;font-size:12px;text-align:center;">Thank you for choosing Eventora!</p>
-                    </div>
-                </div>`
-        });
-        console.log('✅ Booking email sent to', userEmail);
-    } catch (error) {
-        console.error('❌ Error sending booking email:', error.message);
-    }
+module.exports = {
+    sendOTPEmail,
+    sendBookingEmail,
+    sendBookingConfirmationEmail,
+    sendPaymentConfirmationEmail,
+    sendPaymentInstructionsEmail,
+    sendCancellationEmail,
+    sendEnquiryReplyEmail,
 };
-
-const sendPaymentInstructionsEmail = async (userEmail, userName, eventTitle, amount, paymentDetails = {}) => {
-    const upiId = paymentDetails.upiId || process.env.UPI_ID || '9431585217-3@ybl';
-    const upiName = paymentDetails.upiName || process.env.UPI_NAME || 'Eventora Payments';
-    const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${amount}&cu=INR&tn=${encodeURIComponent('Eventora: ' + eventTitle)}`;
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiLink)}`;
-    try {
-        await transporter.sendMail({
-            from: `"Eventora" <${process.env.EMAIL_USER}>`,
-            to: userEmail,
-            subject: `💳 Complete Payment: ${eventTitle}`,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;">
-                    <div style="background:#111;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
-                        <h1 style="color:#fff;margin:0;">🎟️ Eventora</h1>
-                    </div>
-                    <div style="background:#fff;padding:28px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
-                        <h2 style="color:#111;">Hi ${userName}! 💳</h2>
-                        <p style="color:#555;">Your booking for <strong>${eventTitle}</strong> is approved. Please complete payment.</p>
-                        <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px;border-radius:8px;margin:20px 0;">
-                            <p style="margin:0 0 8px;color:#78350f;"><strong>Amount:</strong> ₹${amount}</p>
-                            <p style="margin:0 0 8px;color:#78350f;"><strong>UPI ID:</strong> ${upiId}</p>
-                            <p style="margin:0;color:#78350f;"><strong>Name:</strong> ${upiName}</p>
-                        </div>
-                        <div style="text-align:center;margin:20px 0;">
-                            <img src="${qrCodeUrl}" alt="UPI QR" style="width:200px;height:200px;border-radius:12px;" />
-                        </div>
-                        <p style="text-align:center;"><a href="${upiLink}" style="color:#2563eb;">Open UPI App</a></p>
-                    </div>
-                </div>`
-        });
-        console.log('✅ Payment instructions sent to', userEmail);
-    } catch (error) {
-        console.error('❌ Error sending payment instructions:', error.message);
-    }
-};
-
-const sendPaymentConfirmationEmail = async (userEmail, userName, eventTitle, amount, txnId) => {
-    try {
-        await transporter.sendMail({
-            from: `"Eventora" <${process.env.EMAIL_USER}>`,
-            to: userEmail,
-            subject: `✅ Payment Confirmed: ${eventTitle}`,
-            html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;">
-                    <div style="background:#111;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
-                        <h1 style="color:#fff;margin:0;">🎟️ Eventora</h1>
-                    </div>
-                    <div style="background:#fff;padding:28px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
-                        <div style="text-align:center;margin-bottom:20px;">
-                            <div style="width:64px;height:64px;background:#d1fae5;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:28px;">✅</div>
-                        </div>
-                        <h2 style="color:#111;text-align:center;">Payment Successful!</h2>
-                        <p style="color:#555;text-align:center;">Hi <strong>${userName}</strong>, your payment for <strong>${eventTitle}</strong> has been received.</p>
-                        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:20px 0;">
-                            <table style="width:100%;font-size:14px;">
-                                <tr><td style="color:#6b7280;padding:4px 0;">Event</td><td style="font-weight:bold;text-align:right;">${eventTitle}</td></tr>
-                                <tr><td style="color:#6b7280;padding:4px 0;">Amount Paid</td><td style="font-weight:bold;color:#059669;text-align:right;">₹${amount}</td></tr>
-                                <tr><td style="color:#6b7280;padding:4px 0;">Transaction ID</td><td style="font-family:monospace;font-size:12px;text-align:right;color:#374151;">${txnId}</td></tr>
-                                <tr><td style="color:#6b7280;padding:4px 0;">Status</td><td style="font-weight:bold;color:#059669;text-align:right;">Confirmed ✅</td></tr>
-                            </table>
-                        </div>
-                        <p style="color:#9ca3af;font-size:12px;text-align:center;">Thank you for booking with Eventora! See you at the event 🎉</p>
-                    </div>
-                </div>`
-        });
-        console.log('✅ Payment confirmation email sent to', userEmail);
-    } catch (error) {
-        console.error('❌ Error sending payment confirmation email:', error.message);
-    }
-};
-
-module.exports = { sendBookingEmail, sendOTPEmail, sendPaymentInstructionsEmail, sendPaymentConfirmationEmail };

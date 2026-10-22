@@ -1,7 +1,13 @@
+const path = require('path');
+const dns = require('dns');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+if (process.env.DNS_SERVER) {
+    dns.setServers([process.env.DNS_SERVER]);
+}
 
 const User = require('./models/User');
 

@@ -3,7 +3,7 @@ const Booking = require('../models/Booking');
 const Event = require('../models/Event');
 const User = require('../models/User');
 const { protect, admin } = require('../middleware/auth');
-const { sendBookingEmail, sendOTPEmail, sendPaymentInstructionsEmail } = require('../utils/email');
+const { sendBookingEmail, sendOTPEmail, sendPaymentInstructionsEmail, sendCancellationEmail } = require('../utils/email');
 
 const router = express.Router();
 const generateOTP = () => String(Math.floor(100000 + Math.random() * 900000));
@@ -12,13 +12,11 @@ router.post('/send-otp', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-
     const otp = generateOTP();
     user.bookingOtpCode = otp;
     user.bookingOtpExpires = Date.now() + 10 * 60 * 1000;
     await user.save();
-
-    await sendOTPEmail(user.email, otp, 'booking_verification');
+    await sendOTPEmail(user.email, user.name, otp, 'booking_verification');
     return res.json({ message: 'Booking OTP sent successfully.' });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to send booking OTP', error: error.message });
@@ -28,39 +26,26 @@ router.post('/send-otp', protect, async (req, res) => {
 router.post('/', protect, async (req, res) => {
   try {
     const { eventId, otp, persons = 1 } = req.body;
-
-    if (!eventId) {
-      return res.status(400).json({ message: 'Event is required' });
-    }
+    if (!eventId) return res.status(400).json({ message: 'Event is required' });
 
     const count = Number(persons || 1);
-    if (Number.isNaN(count) || count < 1) {
-      return res.status(400).json({ message: 'Persons must be at least 1' });
-    }
+    if (Number.isNaN(count) || count < 1) return res.status(400).json({ message: 'Persons must be at least 1' });
 
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-
-    if (!otp) {
-      return res.status(400).json({ message: 'OTP is required' });
-    }
-
-    if (!user.bookingOtpCode || !user.bookingOtpExpires || user.bookingOtpExpires < Date.now()) {
+    if (!otp) return res.status(400).json({ message: 'OTP is required' });
+    if (!user.bookingOtpCode || !user.bookingOtpExpires || user.bookingOtpExpires < Date.now())
       return res.status(400).json({ message: 'Booking OTP expired or missing.' });
-    }
-
-    if (user.bookingOtpCode !== String(otp).trim()) {
+    if (user.bookingOtpCode !== String(otp).trim())
       return res.status(400).json({ message: 'Invalid booking OTP' });
-    }
 
     const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+    if (event.availableSeats < count) return res.status(400).json({ message: 'Not enough seats available' });
 
-    if (event.availableSeats < count) {
-      return res.status(400).json({ message: 'Not enough seats available' });
-    }
+    // Check if user already has an active booking for this event
+    const existing = await Booking.findOne({ userId: req.user._id, eventId, status: { $in: ['pending', 'confirmed', 'awaiting_payment'] } });
+    if (existing) return res.status(400).json({ message: 'You already have an active booking for this event.' });
 
     const amount = event.ticketPrice * count;
     const booking = await Booking.create({
@@ -79,10 +64,13 @@ router.post('/', protect, async (req, res) => {
     if (event.ticketPrice === 0) {
       event.availableSeats = Math.max(0, event.availableSeats - count);
       await event.save();
-      await sendBookingEmail(user.email, user.name, event.title, 0, 'paid');
+      await sendBookingEmail(user.email, user.name, event.title, event.date, event.location, 0, 'paid');
     }
 
-    return res.status(201).json({ message: event.ticketPrice === 0 ? 'Free booking confirmed.' : 'Booking requested successfully.', booking });
+    return res.status(201).json({
+      message: event.ticketPrice === 0 ? 'Free booking confirmed.' : 'Booking requested! Awaiting admin confirmation.',
+      booking
+    });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to create booking', error: error.message });
   }
@@ -91,12 +79,10 @@ router.post('/', protect, async (req, res) => {
 router.get('/my', protect, async (req, res) => {
   try {
     const query = req.user.role === 'admin' ? {} : { userId: req.user._id };
-
     const bookings = await Booking.find(query)
       .populate('userId', 'name email')
       .populate('eventId')
       .sort({ bookedAt: -1 });
-
     return res.json(bookings);
   } catch (error) {
     return res.status(500).json({ message: 'Failed to fetch bookings', error: error.message });
@@ -107,40 +93,26 @@ router.put('/:id/confirm', protect, admin, async (req, res) => {
   try {
     const { paymentStatus } = req.body;
     const booking = await Booking.findById(req.params.id).populate('eventId');
-
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
     const event = booking.eventId;
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-
+    if (!event) return res.status(404).json({ message: 'Event not found' });
     const user = await User.findById(booking.userId);
 
     if (paymentStatus === 'paid') {
+      const wasNotConfirmed = booking.status !== 'confirmed';
       booking.paymentStatus = 'paid';
       booking.status = 'confirmed';
-      if (event.availableSeats >= booking.persons && booking.status !== 'confirmed') {
+      if (wasNotConfirmed && event.availableSeats >= booking.persons) {
         event.availableSeats -= booking.persons;
+        await event.save();
       }
-      if (event.availableSeats >= booking.persons && booking.paymentStatus !== 'paid') {
-        event.availableSeats -= booking.persons;
-      }
-      if (event.availableSeats >= booking.persons) {
-        event.availableSeats -= booking.persons;
-      }
-      await event.save();
-      if (user) {
-        await sendBookingEmail(user.email, user.name, event.title, booking.amount, 'paid');
-      }
+      if (user) await sendBookingEmail(user.email, user.name, event.title, event.date, event.location, booking.amount, 'paid');
     } else if (paymentStatus === 'not_paid') {
       booking.paymentStatus = 'not_paid';
       booking.status = 'awaiting_payment';
       if (user) {
-        sendPaymentInstructionsEmail(
-          user.email, user.name, event.title, booking.amount,
+        sendPaymentInstructionsEmail(user.email, user.name, event.title, event.date, event.location, booking.amount,
           { upiId: process.env.UPI_ID, upiName: process.env.UPI_NAME }
         ).catch(err => console.error('Payment instructions email error:', err.message));
       }
@@ -151,38 +123,84 @@ router.put('/:id/confirm', protect, admin, async (req, res) => {
 
     booking.txnId = booking.txnId || `TXN-${Date.now()}`;
     await booking.save();
-
     return res.json({ message: 'Booking updated successfully', booking });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to confirm booking', error: error.message });
   }
 });
 
+// Mark refund as processed (admin only)
+router.put('/:id/refund', protect, admin, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('eventId');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.refundStatus !== 'pending') return res.status(400).json({ message: 'No pending refund for this booking' });
+
+    booking.refundStatus = 'processed';
+    booking.paymentStatus = 'refunded';
+    await booking.save();
+
+    const user = await User.findById(booking.userId);
+    if (user && booking.eventId) {
+      sendCancellationEmail(user.email, user.name, booking.eventId.title, booking.amount, true)
+        .catch(err => console.error('Refund email error:', err.message));
+    }
+
+    return res.json({ message: 'Refund marked as processed', booking });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to process refund', error: error.message });
+  }
+});
+
 router.delete('/:id', protect, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id).populate('eventId');
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
     const isOwner = booking.userId.toString() === req.user._id.toString();
-    if (!isOwner && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
+    if (!isOwner && req.user.role !== 'admin') return res.status(403).json({ message: 'Not authorized' });
 
-    if (booking.status === 'confirmed' && booking.paymentStatus === 'paid' && booking.eventId) {
+    const now = new Date();
+    const bookedAt = new Date(booking.bookedAt);
+    const hoursSinceBooking = (now - bookedAt) / (1000 * 60 * 60);
+
+    // Refund policy: only if cancelled within 24 hours AND payment was made
+    const isRefundEligible = booking.paymentStatus === 'paid' && hoursSinceBooking <= 24;
+
+    // Restore seats if confirmed
+    if ((booking.status === 'confirmed' || booking.status === 'awaiting_payment') && booking.eventId) {
       const event = booking.eventId;
       event.availableSeats = Math.min(event.totalSeats, event.availableSeats + booking.persons);
       await event.save();
     }
 
     booking.status = 'cancelled';
-    if (booking.paymentStatus === 'paid') {
-      booking.paymentStatus = 'not_paid';
+    booking.cancelledAt = now;
+
+    if (isRefundEligible) {
+      booking.refundStatus = 'pending';
+      booking.paymentStatus = 'refund_pending';
+      booking.cancellationNote = 'Cancelled within 24 hours — refund pending admin processing.';
+    } else if (booking.paymentStatus === 'paid') {
+      booking.refundStatus = 'none';
+      booking.cancellationNote = 'Cancelled after 24 hours — non-refundable.';
     }
+
     await booking.save();
 
-    return res.json({ message: 'Booking cancelled successfully' });
+    const user = await User.findById(booking.userId);
+    if (user && booking.eventId) {
+      sendCancellationEmail(user.email, user.name, booking.eventId.title, booking.amount, isRefundEligible)
+        .catch(err => console.error('Cancellation email error:', err.message));
+    }
+
+    return res.json({
+      message: isRefundEligible
+        ? 'Booking cancelled. Refund will be processed within 3-5 business days.'
+        : 'Booking cancelled. No refund applicable (cancelled after 24 hours).',
+      refundEligible: isRefundEligible,
+      booking
+    });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to cancel booking', error: error.message });
   }

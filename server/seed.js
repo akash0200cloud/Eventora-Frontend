@@ -1,5 +1,6 @@
+const path = require('path');
 const dns = require('dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']);
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
@@ -8,7 +9,7 @@ const User = require('./models/User');
 const Event = require('./models/Event');
 const Booking = require('./models/Booking');
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const users = [
     { name: 'Admin User', email: 'admin@eventora.com', password: 'password123', role: 'admin' },
@@ -20,10 +21,32 @@ const users = [
     { name: 'Ethan Hunt', email: 'ethan@eventora.com', password: 'password123', role: 'user' },
     { name: 'Fiona Gallagher', email: 'fiona@eventora.com', password: 'password123', role: 'user' },
     { name: 'George Miller', email: 'george@eventora.com', password: 'password123', role: 'user' },
-    { name: 'Hannah Montana', email: 'hannah@eventora.com', password: 'password123', role: 'user' }
+    { name: 'Hannah Montana', email: 'hannah@eventora.com', password: 'password123', role: 'user' },
+    { name: 'Akash Kumar Soni', email: 'akashkrsoni0200@gmail.com', password: 'akash01', role: 'user' },
+    { name: 'Akash Abhinav', email: 'akashabhinav0200@gmail.com', password: 'akash01', role: 'user' },
 ];
 
 const events = [
+     {
+        title: 'AAGHAZ Fresher Party Geeta University 2026 ',
+        description: 'Get ready for an unforgettable evening of music, energy and celebration at the AAGHAZ Fresher Party',
+        date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), // 10 days from now
+        location: 'Naultha Panipat, Haryana',
+        category: 'Music',
+        totalSeats: 800,
+        ticketPrice: 1000,
+        image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTKA-9aEJvvXVQnNZUNQrJ9-aaWzZp9SKEkKZ3owsJ_iA&s=10'
+    },
+     {
+        title: 'VVAN Movies 2026',
+        description: 'Join us at the cinema and enjoy the magic of movies on the big screen with immersive sound and an unforgettable theatre experience.',
+        date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), // 10 days from now
+        location: ' Panipat Mittal Mall, Haryana',
+        category: 'Movies',
+        totalSeats: 600,
+        ticketPrice: 200,
+        image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTaK2yXfre-fVKAuhhprlLbSF9Wn0obX3Wo173vCjIkWg&s=10'
+    },
     {
         title: 'React & Node.js Developer Retreat',
         description: 'Join us for a 3-day deep dive into modern full-stack web development. Perfect for developers looking to take their skills to the next level.',
@@ -157,11 +180,16 @@ const seedDatabase = async () => {
                 }
             }
         }
+        const dns = require('dns');
 
         await Booking.insertMany(bookingsData);
         console.log(`🎫 Inserted ${bookingsData.length} randomized dummy bookings (confirmed, pending, cancelled, paid, not_paid).`);
 
         console.log('\n🚀 Database seeded successfully!');
+
+        if (process.env.DNS_SERVER) {
+            dns.setServers([process.env.DNS_SERVER]);
+        }
         console.log('-------------------------------------------');
         console.log('Admin Email: admin@eventora.com');
         console.log('User Email:  user@eventora.com');

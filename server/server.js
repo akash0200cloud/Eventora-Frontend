@@ -1,47 +1,45 @@
-const dns = require("dns");
+require('dotenv').config();
 
-dns.setServers(["8.8.8.8", "1.1.1.1"]);
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
 
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
 
-dotenv.config();
-
-const authRoutes = require('./routes/auth');
-const eventRoutes = require('./routes/events');
-const bookingRoutes = require('./routes/bookings');
-const paymentRoutes = require('./routes/payment');
+const authRoutes     = require('./routes/auth');
+const eventRoutes    = require('./routes/events');
+const bookingRoutes  = require('./routes/bookings');
+const paymentRoutes  = require('./routes/payment');
+const enquiryRoutes  = require('./routes/enquiries');
 
 const app = express();
 
 app.use(cors({
-    origin: '*',
-    credentials: false
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
 }));
+
 app.use(express.json());
 
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'OK', db: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected' });
-});
+app.use('/api/auth',      authRoutes);
+app.use('/api/events',    eventRoutes);
+app.use('/api/bookings',  bookingRoutes);
+app.use('/api/payment',   paymentRoutes);
+app.use('/api/enquiries', enquiryRoutes);
 
-app.use('/api/auth', authRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/payment', paymentRoutes);
+const PORT = process.env.PORT || 5000;
 
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('✅ MongoDB Connected'))
-    .catch(err => console.error('❌ MongoDB Error:', err.message));
+async function startServer() {
+    try {
+        if (!process.env.MONGO_URI) throw new Error('MONGO_URI missing in server/.env');
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log('✅ MongoDB Connected');
+        app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+    } catch (err) {
+        console.error('❌ Server startup failed:', err.message);
+        process.exit(1);
+    }
+}
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`✅ Server running on port ${PORT}`);
-    const pingUrl = process.env.RENDER_EXTERNAL_URL || `https://eventora-backend-locv.onrender.com`;
-    setInterval(() => {
-        const https = require('https');
-        https.get(`${pingUrl}/api/health`, () => console.log('🏓 Keep-alive ping sent'))
-            .on('error', () => {});
-    }, 14 * 60 * 1000);
-});
+startServer();
