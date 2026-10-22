@@ -349,6 +349,12 @@ const EventDetail = () => {
                                 </div>
                             )}
 
+                            {/* Cancellation Policy */}
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700">
+                                <p className="font-bold mb-1">⏰ Cancellation Policy</p>
+                                <p>Cancel within <strong>24 hours</strong> of booking for a full refund. After 24 hours, tickets are <strong>non-refundable</strong>.</p>
+                            </div>
+
                             {/* Security badge */}
                             <div className="flex items-center justify-center gap-2 text-[11px] text-gray-400 pt-1 border-t border-gray-100">
                                 <FaShieldAlt />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/axios';
+import { useTheme } from '../context/ThemeContext';
 import { FaCalendarAlt, FaMapMarkerAlt, FaSearch, FaRegClock, FaTicketAlt, FaShieldAlt, FaArrowRight, FaFire } from 'react-icons/fa';
 
 const openMap = (location, e) => {
@@ -21,6 +22,7 @@ const useInView = (threshold = 0.15) => {
 };
 
 const Home = () => {
+    const { dark } = useTheme();
     const [events, setEvents] = useState([]);
     const [search, setSearch] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
@@ -99,15 +101,16 @@ const Home = () => {
                     { icon: <FaShieldAlt />, title: '2FA Security', desc: 'Every booking is protected with email OTP — no exceptions.', delay: 'delay-300' },
                 ].map((f, i) => (
                     <div key={f.title}
-                        className={`group bg-white border border-gray-100 rounded-2xl p-6 flex items-start gap-4 shadow-sm cursor-default
-                            hover:shadow-2xl hover:-translate-y-2 hover:border-indigo-100 transition-all duration-300 hover-glow
+                        className={`group card-3d relative bg-white border border-gray-100 rounded-2xl p-6 flex items-start gap-4 shadow-sm cursor-default
+                            ${dark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-100'}
                             ${featVisible ? `animate-fade-up ${f.delay}` : 'opacity-0'}`}>
-                        <div className="w-11 h-11 bg-gray-950 text-white rounded-xl flex items-center justify-center text-base shrink-0 group-hover:scale-110 group-hover:rotate-6 group-hover:bg-indigo-600 transition-all duration-300">
+                        <div className="card-shine rounded-2xl" />
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-base shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 ${dark ? 'bg-indigo-600 text-white' : 'bg-gray-950 text-white group-hover:bg-indigo-600'}`}>
                             {f.icon}
                         </div>
                         <div>
-                            <h3 className="font-bold text-gray-900 mb-1 group-hover:text-indigo-700 transition-colors duration-200">{f.title}</h3>
-                            <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
+                            <h3 className={`font-bold mb-1 group-hover:text-indigo-500 transition-colors duration-200 ${dark ? 'text-white' : 'text-gray-900'}`}>{f.title}</h3>
+                            <p className={`text-sm leading-relaxed ${dark ? 'text-gray-400' : 'text-gray-500'}`}>{f.desc}</p>
                         </div>
                     </div>
                 ))}
@@ -117,8 +120,8 @@ const Home = () => {
             <div ref={eventsRef}>
                 <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 ${eventsVisible ? 'animate-fade-left delay-0' : 'opacity-0'}`}>
                     <div>
-                        <h2 className="text-2xl font-black text-gray-900">Upcoming Events</h2>
-                        <p className="text-gray-500 text-sm mt-0.5">{filtered.length} event{filtered.length !== 1 ? 's' : ''} found</p>
+                        <h2 className={`text-2xl font-black ${dark ? 'text-white' : 'text-gray-900'}`}>Upcoming Events</h2>
+                        <p className={`text-sm mt-0.5 ${dark ? 'text-gray-500' : 'text-gray-500'}`}>{filtered.length} event{filtered.length !== 1 ? 's' : ''} found</p>
                     </div>
                 </div>
 
@@ -129,8 +132,10 @@ const Home = () => {
                             <button key={cat} onClick={() => setActiveCategory(cat)}
                                 className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200 border hover:-translate-y-0.5 ${
                                     activeCategory === cat
-                                        ? 'bg-gray-900 text-white border-gray-900 shadow-md scale-105'
-                                        : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-400 hover:text-indigo-600 hover:shadow-md'
+                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/25 scale-105'
+                                        : dark
+                                            ? 'bg-white/5 text-gray-400 border-white/10 hover:border-indigo-500 hover:text-indigo-400'
+                                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-400 hover:text-indigo-600 hover:shadow-md'
                                 }`}>
                                 {cat}
                             </button>
@@ -161,13 +166,16 @@ const Home = () => {
 
                             return (
                                 <div key={event._id}
-                                    className={`group bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col
-                                        hover:shadow-2xl hover:-translate-y-2 hover:border-indigo-100 transition-all duration-300
-                                        ${eventsVisible ? `animate-slide-card ${d}` : 'opacity-0'}`}
-                                    style={{ '--tw-shadow-color': 'rgba(99,102,241,0.1)' }}>
+                                    className={`group card-3d relative rounded-2xl overflow-hidden flex flex-col
+                                        border shadow-sm
+                                        ${dark
+                                            ? 'bg-white/5 border-white/10 hover:border-indigo-500/40'
+                                            : 'bg-white border-gray-100 hover:border-indigo-100'}
+                                        ${eventsVisible ? `animate-slide-card ${d}` : 'opacity-0'}`}>
 
                                     {/* Image */}
                                     <div className="relative h-48 overflow-hidden bg-gray-100">
+                                        <div className="card-shine" />
                                         {event.image ? (
                                             <img src={event.image} alt={event.title}
                                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
@@ -201,34 +209,34 @@ const Home = () => {
                                     </div>
 
                                     {/* Content */}
-                                    <div className="p-5 flex flex-col flex-grow">
+                                    <div className={`p-5 flex flex-col flex-grow ${dark ? 'text-white' : ''}`}>
                                         <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">{event.category}</span>
-                                        <h2 className="text-base font-bold text-gray-900 mb-3 leading-snug line-clamp-2 group-hover:text-indigo-700 transition-colors duration-200">{event.title}</h2>
+                                        <h2 className={`text-base font-bold mb-3 leading-snug line-clamp-2 group-hover:text-indigo-500 transition-colors duration-200 ${dark ? 'text-white' : 'text-gray-900'}`}>{event.title}</h2>
 
                                         <div className="space-y-2 mb-4">
-                                            <div className="flex items-center gap-2 text-gray-500 text-xs">
-                                                <FaCalendarAlt className="text-indigo-300 shrink-0 group-hover:text-indigo-500 transition-colors" />
+                                            <div className="flex items-center gap-2 text-xs" style={{color: dark ? '#9ca3af' : '#6b7280'}}>
+                                                <FaCalendarAlt className="text-indigo-400 shrink-0" />
                                                 <span>{new Date(event.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
                                             </div>
                                             <button onClick={e => openMap(event.location, e)}
-                                                className="flex items-center gap-2 text-xs text-gray-500 hover:text-rose-500 transition-colors group/loc w-full text-left">
-                                                <FaMapMarkerAlt className="text-gray-400 group-hover/loc:text-rose-500 shrink-0 transition-colors group-hover/loc:animate-bounce" />
+                                                className="flex items-center gap-2 text-xs hover:text-rose-500 transition-colors group/loc w-full text-left" style={{color: dark ? '#9ca3af' : '#6b7280'}}>
+                                                <FaMapMarkerAlt className="text-gray-400 group-hover/loc:text-rose-500 shrink-0 transition-colors" />
                                                 <span className="truncate group-hover/loc:underline underline-offset-2">{event.location}</span>
                                             </button>
                                         </div>
 
                                         <div className="mt-auto">
-                                            <div className="flex justify-between text-[10px] text-gray-400 font-semibold mb-1.5">
+                                            <div className={`flex justify-between text-[10px] font-semibold mb-1.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
                                                 <span>{isSoldOut ? 'No seats left' : `${seatsLeft} seats left`}</span>
                                                 <span>{event.totalSeats} total</span>
                                             </div>
-                                            <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4 overflow-hidden">
+                                            <div className={`w-full rounded-full h-1.5 mb-4 overflow-hidden ${dark ? 'bg-white/10' : 'bg-gray-100'}`}>
                                                 <div className={`h-1.5 rounded-full transition-all duration-700 ${isSoldOut ? 'bg-red-400' : isLow ? 'bg-amber-400' : 'bg-emerald-500'}`}
                                                     style={{ width: `${seatsPercent}%` }} />
                                             </div>
 
                                             <Link to={`/events/${event._id}`}
-                                                className="group/btn flex items-center justify-center gap-2 w-full bg-gray-950 hover:bg-indigo-600 text-white text-sm font-bold py-2.5 rounded-xl transition-all duration-300 shadow-sm hover:shadow-indigo-200 hover:shadow-lg hover:-translate-y-0.5">
+                                                className="group/btn flex items-center justify-center gap-2 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-2.5 rounded-xl transition-all duration-300 shadow-sm hover:shadow-indigo-500/40 hover:shadow-lg hover:-translate-y-0.5">
                                                 View Details
                                                 <FaArrowRight className="text-xs group-hover/btn:translate-x-1.5 transition-transform duration-200" />
                                             </Link>
