@@ -1,5 +1,5 @@
 {
-  "name": "eventora",
+  "name": "Eventora",
   "private": true,
   "version": "1.0.0",
   "description": "Root scripts for Eventora client and server",
@@ -19,5 +19,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.0.1"
+  },
+  "dependencies": {
+    "mongodb": "^7.7.0"
   }
 }
