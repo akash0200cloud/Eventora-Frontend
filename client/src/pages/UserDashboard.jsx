@@ -24,7 +24,7 @@ import {
   FaHourglassHalf,
   FaWallet,
 } from "react-icons/fa";
-import "../UserDashboard.css";
+import "./UserDashboard.css";
 
 const STATUS_CONFIG = {
   confirmed: {
